@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SpamShield-inbox</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body class="inbox-page">
+<div class="app-bg"></div>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <span class="topbar-brand">SPAM SHIELD </span>
+  </div>
+
+  <div class="topbar-right">
+    <span class="topbar-user">{{ user }}</span>
+    <a href="/logout" class="btn-topbar-logout">
+      <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </a>
+  </div>
+</header>
+
+<div class="app-layout">
+
+<aside class="sidebar">
+  <nav class="sidebar-nav">
+    <p class="sidebar-section-label">Mailbox</p>
+
+    <a href="#" class="sidebar-link active" onclick="filterEmails('all')">
+  <span class="sidebar-link-icon">📥</span>
+  <span>Inbox</span>
+  <span class="badge-count">{{ total }}</span>
+</a>
+
+<a href="#" class="sidebar-link" onclick="filterEmails('spam')">
+  <span class="sidebar-link-icon">🚨</span>
+  <span>Spam</span>
+  <span class="badge-count badge-spam">{{ spam_count }}</span>
+</a>
+
+<a href="#" class="sidebar-link" onclick="filterEmails('ham')">
+  <span class="sidebar-link-icon">✅</span>
+  <span>Legitimate</span>
+  <span class="badge-count badge-ham">{{ ham_count }}</span>
+</a>
+  </nav>
+
+<div class="sidebar-model-box">
+
+  <div class="model-pill">
+    <div class="model-status-dot"></div>
+    <span class="model-name">ML Model Performance</span>
+  </div>
+
+  <div class="model-detail-row">
+    <span>Logistic Regression</span>
+    <span class="status-live">96.14%</span>
+  </div>
+
+  <div class="model-detail-row">
+    <span>Naive Bayes</span>
+    <span class="status-live">96.68%</span>
+  </div>
+
+  <div class="model-detail-row">
+    <span>KNN</span>
+    <span class="status-live">90.57%</span>
+  </div>
+
+  <div class="model-detail-row">
+    <span>Decision Tree</span>
+    <span class="status-live">94.25%</span>
+  </div>
+
+  <div class="model-detail-row">
+    <span>Best Model</span>
+    <span class="status-live">Naive Bayes</span>
+  </div>
+
+</div>
+</aside>
+
+<main class="main-content">
+
+<section class="analyzer-section">
+  <div class="analyzer-header">
+    <div class="analyzer-title">
+    📩 Check Email
+    </div>
+    <div class="analyzer-model-chip">Spam/Ham </div>
+  </div>
+
+  <div class="analyzer-input-wrap">
+    <textarea id="analyzeInput" class="analyzer-textarea" placeholder="Paste email content here to evaluate..."></textarea>
+    <span class="analyzer-char-count" id="charCount">0 characters</span>
+  </div>
+
+  <div class="analyzer-controls">
+    <button class="btn-analyze" id="analyzeBtn" onclick="runAnalysis()">
+      <span class="btn-analyze-icon">
+        <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </span>
+      <span>Check message</span>
+    </button>
+    <button class="btn-clear" onclick="clearAnalyzer()">Clear</button>
+  </div>
+
+  <div id="analyzeResult" style="display:none;" class="analyzer-result">
+    <div class="result-left">
+      <div class="result-icon" id="resultIcon"></div>
+      <div>
+        <h3 class="result-label" id="resultLabel"></h3>
+        <p class="result-sub" id="resultSub"></p>
+      </div>
+    </div>
+    <div class="result-right">
+      <div class="result-conf-number" id="resultConf"></div>
+      <div class="result-bar-track">
+        <div class="result-bar-fill" id="resultBar"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="inbox-area">
+
+  <div class="email-list-panel">
+    <div class="email-list-toolbar">
+      <div class="email-list-title">Inbox <span class="list-count">{{ total }} msgs</span></div>
+      <div class="search-wrap">
+        <span class="search-icon">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </span>
+        <input type="text" class="search-input" placeholder="Search emails..." oninput="searchEmails(this.value)">
+      </div>
+    </div>
+    <div class="email-list" id="emailList">
+      {% for email in emails %}
+      <div class="email-card"
+           id="card-{{ loop.index0 }}"
+           onclick="showDetail('{{ loop.index0 }}')"
+           data-spam="{{ '1' if email.is_spam else '0' }}"
+           data-text="{{ email.subject }} {{ email.body }}">
+
+        <div class="card-avatar {% if email.is_spam %}avatar-spam{% else %}avatar-ham{% endif %}">
+          {{ email.sender[0] | upper }}
+        </div>
+
+        <div class="card-body">
+          <div class="card-row1">
+            <div class="card-sender">{{ email.sender }}</div>
+            <div class="card-time">{{ email.time }}</div>
+          </div>
+          <div class="card-subject">{{ email.subject }}</div>
+          <div class="card-row3">
+            <div class="card-preview">{{ email.preview }}</div>
+            {% if email.is_spam %}
+              <div class="badge-spam-pill">SPAM</div>
+            {% else %}
+              <div class="badge-ham-pill">HAM</div>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="detail-panel">
+    <div class="detail-empty" id="detailEmpty">
+      <div class="detail-empty-icon">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      </div>
+      <p>No message selected</p>          
+      <span>Select a message from the list to view its contents.</span>
+    </div>
+    <div class="detail-content" id="detailContent" style="display:none;"></div>
+  </div>
+
+</div>
+
+</main>
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
